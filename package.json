@@ -1,0 +1,22 @@
+{
+  "name": "file-service",
+  "version": "1.0.0",
+  "description": "A simple Express.js server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "1.20.2",
+    "express": "^4.18.2",
+    "jszip": "3.10.1",
+    "chromium": "3.0.3",
+    "playwright": "1.56.1",
+    "pptxgenjs": "3.12.0",
+    "stream": "0.0.3"
+  }
+}
