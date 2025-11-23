@@ -76,23 +76,60 @@ async function renderSlide(html, css, width, height) {
 // -----------------------------
 // BUILD PPT
 // -----------------------------
-async function buildPpt(images) {
+function normalizeTextConfig(text) {
+  if (!text) return null;
+
+  if (typeof text === 'string') {
+    return { value: text, options: {} };
+  }
+
+  if (typeof text === 'object') {
+    const { value, content, text: innerText, options = {}, ...rest } = text;
+    const finalValue = value ?? content ?? innerText;
+    if (!finalValue) return null;
+
+    return { value: finalValue, options: { ...rest, ...options } };
+  }
+
+  return null;
+}
+
+async function buildPpt(slideData) {
   const ppt = new PptxGenJS();
 
-  images.forEach((img) => {
-    const base64 = img.toString('base64');
+  slideData.forEach(({ image, text }) => {
+    const base64 = image.toString('base64');
 
     const slide = ppt.addSlide();
 
     slide.addImage({
       // CHANGE THIS LINE:
       // Use the standard Data URL format instead of the internal "base64:IMAGE_PNG"
-      data: `data:image/png;base64,${base64}`, 
+      data: `data:image/png;base64,${base64}`,
       x: 0,
       y: 0,
       w: '100%',
       h: '100%'
     });
+
+    const normalizedText = normalizeTextConfig(text);
+
+    if (normalizedText) {
+      const defaultTextOptions = {
+        x: '5%',
+        y: '5%',
+        w: '90%',
+        color: '363636',
+        fontSize: 18,
+        fontFace: 'Arial',
+        align: 'left'
+      };
+
+      slide.addText(normalizedText.value, {
+        ...defaultTextOptions,
+        ...normalizedText.options
+      });
+    }
   });
 
   const base64Out = await ppt.write('base64');
@@ -131,15 +168,18 @@ app.post('/generate-ppt', async (req, res) => {
     console.log(req.body, 'PAYLOAD')
     console.log(`Rendering ${slides.length} slides...`);
 
-    const images = await Promise.all(
+    const slidesWithImages = await Promise.all(
       slides.map((s) =>
         withConcurrency(() =>
-          renderSlide(s.html, css, s.width, s.height)
+          renderSlide(s.html, css, s.width, s.height).then((image) => ({
+            image,
+            text: s.text
+          }))
         )
       )
     );
 
-    const pptBuffer = await buildPpt(images);
+    const pptBuffer = await buildPpt(slidesWithImages);
 
     const stream = Readable.from(pptBuffer);
 
